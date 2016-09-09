@@ -12,7 +12,7 @@ CreateModels <- function(df, formula, control) {
   #   The list of models trained
 
   # Stochastic Gradient Boosting
-  gbmFit1 <- train(formula, data = df, method = "gbm",
+  gbm.fit1 <- train(formula, data = df, method = "gbm",
                    trControl = control, metric = "ROC", verbose = FALSE)
   # CART - Random Forest
   rpart1 <- train(formula, data = df, method = "rpart",
@@ -25,7 +25,7 @@ CreateModels <- function(df, formula, control) {
               trControl = control, metric = "ROC", verbose = FALSE)
   # TODO: A better way to create the list of models, maybe appending each one
   # as they are trained
-  return (list("gbm" = gbmFit1, "rpart" = rpart1, "nnet" = nnet1, "C5" = C5))
+  return (list("gbm" = gbm.fit1, "rpart" = rpart1, "nnet" = nnet1, "C5" = C5))
 }
 
 MakePredictions <- function(models, df) {

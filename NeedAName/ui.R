@@ -8,7 +8,7 @@ shinyUI(fluidPage(
     sidebarPanel(
       fileInput("file1", "Choose Input File",
                 accept = c("text/csv", "text/comma-separated-values",
-                           "text/plain", ".csv")),
+                           "text/plain", ".csv", ".data")),
       downloadButton("downloadData", "Download Result"),
       actionButton("plotButton", "Display Statistics", icon = NULL,
                    width = NULL)

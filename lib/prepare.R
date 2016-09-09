@@ -1,3 +1,5 @@
+require(forcats)
+
 Mode <- function(x) {
   # Find the mode.
   #
@@ -7,7 +9,7 @@ Mode <- function(x) {
   # Returns:
   #   The mode of the vector
   ux <- unique(x)
-  ux[which.max(tabulate(match(x, ux)))]
+  ux[which.max(tabulate(match(na.omit(x), ux)))]
 }
 
 MissingNumeric <- function(x) {
@@ -29,7 +31,8 @@ MissingFactor <- function(x) {
   #
   # Returns:
   #   The vector with missing values replaced by the mode.
-  replace(x, is.na(x), Mode(x))
+  # as.factor(replace(x, is.na(x), Mode(x)))
+  fct_explicit_na(x, Mode(x))
 }
 
 TreatNumeric <- function(df) {
@@ -50,6 +53,19 @@ TreatNumeric <- function(df) {
   return (df)
 }
 
+ReduceLevels <- function(df) {
+  # Reduce the number of levels on factor columns to a maximum of 10 + "Other"
+  #
+  # Args:
+  #   df: dataframe on which process.
+  #
+  # Returns:
+  #   The dataframe with factor levels reduced.
+  cols <- (sapply(df, function(x) nlevels(x)) > 11)
+  df[, cols] <- lapply(df[, cols], function(x) fct_lump(x, n = 10))
+  return (df)
+}
+
 TreatFactor <- function(df) {
   # Preprocess factor data on a dataframe.
   #
@@ -62,6 +78,22 @@ TreatFactor <- function(df) {
   # Get factor columns
   factors <- sapply(df, is.factor)
   # Replace missing values
-  df[, factors] <- apply(df[, factors], 2, MissingFactor)
-  return (df)
+  df[, factors] <- lapply(df[, factors], MissingFactor)
+  ReduceLevels(df)
+}
+
+RemoveHighCorrelated <- function(df, th = 0.75) {
+    # Remove the atributes that have high correlation.
+    #
+    # Args:
+    #    df: dataframe to be analyzed.
+    #    th: threshold to select high correlated atributes.
+    #
+    # Returns:
+    #   The dataframe with the high correlated columns removed.
+
+    numerics <- sapply(df, is.numeric)
+    corr <- cor(df[, numerics])
+    alta.corr <- findCorrelation(corr, cutoff = th)
+    subset(df, select = -alta.corr)
 }
