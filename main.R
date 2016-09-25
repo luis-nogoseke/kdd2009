@@ -20,6 +20,24 @@ t <- subset(t, select = uniquelength > 1)
 na.count <-sapply(t, function(x) sum(length(which(is.na(x)))))
 t <- subset(t, select = na.count < 30000)
 
+# Add the target
+target <- read.table("tcc-data/orange_small_train_appetency.labels",
+                     header = FALSE)
+names(target) <- c("appetency")
+target$appetency <- as.factor(target$appetency)
+target <- fct_recode(target$appetency, A = "-1", B = "1")
+t$appetency <- target
+
+# Split the data
+in.training <- createDataPartition(t$appetency, p = .75, list = FALSE)
+testing <- t[-in.training, ]
+t <- t[ in.training, ]
+
+in.training <- createDataPartition(t$appetency, p = .75, list = FALSE)
+stack.training  <- t[-in.training, ]
+t <- t[ in.training, ]
+
+
 # Treat the missing values and scale the numeric ones
 t <- TreatNumeric(t)
 t <- TreatFactor(t)
@@ -28,13 +46,11 @@ t <- TreatFactor(t)
 t <- RemoveHighCorrelated(t)
 
 
-# Add the target
-target <- read.table("tcc-data/orange_small_train_appetency.labels",
-                     header = FALSE)
-names(target) <- c("appetency")
-target$appetency <- as.factor(target$appetency)
-target <- fct_recode(target$appetency, A = "-1", B = "1")
-t$appetency <- target
+
+testing <- TreatNumeric(testing)
+testing <- TreatFactor(testing)
+
+
 
 # Train models
 fit.control <- trainControl(method = "repeatedcv", number = 10, repeats = 3,
