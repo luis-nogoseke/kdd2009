@@ -3,14 +3,15 @@ require(pROC)
 require(ROCR)
 
 source("lib/prepare.R")
-
+last <- function(x) { tail(x, n = 1) }
 # To guarantee reproducible results
 set.seed(1234)
 
-classes <- readRDS("smallclass.RDS")
-t <- read.table("tcc-data/orange_small_train.data", nrow = 50000,
-                sep = "\t", header = TRUE, colClasses = c(classes),
-                stringsAsFactors = TRUE, na.strings = c(" ", "", "\t"))
+t <- readRDS('training_data.RDS')
+
+# Remove the target to allow the data preparation
+temp_app <- t$appetency
+t$appetency <- NULL
 
 # Remove columns that have only the same value
 uniquelength <- sapply(t, function(x) length(unique(x)))
@@ -18,39 +19,20 @@ t <- subset(t, select = uniquelength > 1)
 
 # Remove columns with more than 60% missing values
 na.count <-sapply(t, function(x) sum(length(which(is.na(x)))))
-t <- subset(t, select = na.count < 30000)
-
-# Add the target
-target <- read.table("tcc-data/orange_small_train_appetency.labels",
-                     header = FALSE)
-names(target) <- c("appetency")
-target$appetency <- as.factor(target$appetency)
-target <- fct_recode(target$appetency, A = "-1", B = "1")
-t$appetency <- target
-
-# Split the data
-in.training <- createDataPartition(t$appetency, p = .75, list = FALSE)
-testing <- t[-in.training, ]
-t <- t[ in.training, ]
-
-in.training <- createDataPartition(t$appetency, p = .75, list = FALSE)
-stack.training  <- t[-in.training, ]
-t <- t[ in.training, ]
+t <- subset(t, select = na.count < 17000)
 
 
 # Treat the missing values and scale the numeric ones
 t <- TreatNumeric(t)
 t <- TreatFactor(t)
-
+t <- ReduceLevels(t)
 # Remove atributes with correlation higher than 75%
 t <- RemoveHighCorrelated(t)
 
+# re-append the target
 
-
-testing <- TreatNumeric(testing)
-testing <- TreatFactor(testing)
-
-
+t$appetency <-temp_app
+rm(temp_app)
 
 # Train models
 fit.control <- trainControl(method = "repeatedcv", number = 10, repeats = 3,
@@ -59,14 +41,40 @@ fit.control <- trainControl(method = "repeatedcv", number = 10, repeats = 3,
 
 formula <- appetency ~ .
 
-model <- glm(formula,family=binomial(link='logit'),data=t)
+#model <- glm(formula,family=binomial(link='logit'),data=t)
 
 gbm.fit1 <- train(formula, data = t, method = "gbm", trControl = fit.control,
-                  metric = "ROC", verbose = FALSE)
+                  metric = "ROC", verbose = TRUE)
 
+
+#rf.fit <- train(formula, data = t, method = "rf", trControl = fit.control,
+                metric = "ROC", verbose = TRUE)
 # svm.fit1 <- train(formula, data = t, method = "svmRadial", trControl = fit.control,
 #                   metric = "ROC")
 #
 #
 # nnet1 <- train(formula, data = t, method = "nnet", trControl = fit.control,
 #                metric = "ROC", trace = FALSE)
+
+attributes <- names(t)
+testing<-readRDS('testing_data.RDS')[, attributes]
+temp_app <- testing$appetency
+testing$appetency <- NULL
+
+testing <- TreatNumeric(testing)
+testing <- TreatFactor(testing)
+
+
+# Adapt the factors levels on the testing data according to what was selected on
+# the training data
+facs <- sapply(t, is.factor)
+b <- sapply(t[,facs], levels)
+uniquelength <- sapply(b, function(x) length(unique(x)))
+b <- subset(b, uniquelength > 9)
+for (n in names(b)){
+      testing[,n] <- fct_collapse(testing[,n], Other = subset(levels(testing[,n]), !(levels(testing[,n]) %in% b[[n]])))
+}
+
+p <- predict(gbm.fit1, newdata=testing)
+
+table(temp_app, p)

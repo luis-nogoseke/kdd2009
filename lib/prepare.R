@@ -61,8 +61,8 @@ ReduceLevels <- function(df) {
   #
   # Returns:
   #   The dataframe with factor levels reduced.
-  cols <- (sapply(df, function(x) nlevels(x)) > 11)
-  df[, cols] <- lapply(df[, cols], function(x) fct_lump(x, n = 10))
+  cols <- (sapply(df, function(x) nlevels(x)) > 10)
+  df[, cols] <- lapply(df[, cols], function(x) fct_lump(x, n = 9))
   return (df)
 }
 
@@ -79,7 +79,7 @@ TreatFactor <- function(df) {
   factors <- sapply(df, is.factor)
   # Replace missing values
   df[, factors] <- lapply(df[, factors], MissingFactor)
-  ReduceLevels(df)
+  return (df)
 }
 
 RemoveHighCorrelated <- function(df, th = 0.75) {
