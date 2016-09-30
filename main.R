@@ -35,7 +35,7 @@ t$appetency <-temp_app
 rm(temp_app)
 
 # Train models
-fit.control <- trainControl(method = "repeatedcv", number = 10, repeats = 3,
+fit.control <- trainControl(method = "repeatedcv", number = 10, repeats = 1,
                            summaryFunction = twoClassSummary, classProbs = TRUE,
                            verboseIter = TRUE)
 
@@ -43,12 +43,16 @@ formula <- appetency ~ .
 
 #model <- glm(formula,family=binomial(link='logit'),data=t)
 
-gbm.fit1 <- train(formula, data = t, method = "gbm", trControl = fit.control,
-                  metric = "ROC", verbose = TRUE)
+ada <- train(formula, data = t, method = "ada", trControl = fit.control,
+             metric = "ROC", verbose = TRUE)
+# saveRDS(ada,'ada.RD')
+
+#gbm.fit1 <- train(formula, data = t, method = "gbm", trControl = fit.control,
+#                  metric = "ROC", verbose = TRUE)
 
 
 #rf.fit <- train(formula, data = t, method = "rf", trControl = fit.control,
-                metric = "ROC", verbose = TRUE)
+#                metric = "ROC", verbose = TRUE)
 # svm.fit1 <- train(formula, data = t, method = "svmRadial", trControl = fit.control,
 #                   metric = "ROC")
 #
@@ -57,6 +61,8 @@ gbm.fit1 <- train(formula, data = t, method = "gbm", trControl = fit.control,
 #                metric = "ROC", trace = FALSE)
 
 attributes <- names(t)
+attributes <- attributes[-length(attributes)] # Remove the target
+saveRDS(attributes, 'adaAttributes.RD')
 testing<-readRDS('testing_data.RDS')[, attributes]
 temp_app <- testing$appetency
 testing$appetency <- NULL
@@ -71,10 +77,15 @@ facs <- sapply(t, is.factor)
 b <- sapply(t[,facs], levels)
 uniquelength <- sapply(b, function(x) length(unique(x)))
 b <- subset(b, uniquelength > 9)
+saveRDS(b, 'adaFacLevels.RD')
 for (n in names(b)){
       testing[,n] <- fct_collapse(testing[,n], Other = subset(levels(testing[,n]), !(levels(testing[,n]) %in% b[[n]])))
 }
 
-p <- predict(gbm.fit1, newdata=testing)
+p <- predict(ada, newdata=testing, "prob")
+plot(performance(prediction(p[,2], temp_app), 'tpr', 'fpr'))
+auc<-performance(prediction(p[,2], temp_app), measure= "auc")
+print(auc@y.values[[1]])
 
-table(temp_app, p)
+p2 <- predict(ada, newdata=testing)
+confusionMatrix(temp_app, p2)

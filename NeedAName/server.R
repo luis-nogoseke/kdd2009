@@ -3,9 +3,12 @@ library(shiny)
 source("../lib/prepare.R")
 
 # Load the trained model and the static indo to load the new data
-model <- readRDS("../gmbModel165.RDS");
+model <- readRDS("../ada.RD");
 classes <- readRDS("../smallclass.RDS")
-attributes <- readRDS("../cols165.RDS");
+attributes <- readRDS("../adaAttributes.RD");
+facs <- readRDS('../adaFacLevels.RD')
+
+print('Ready')
 
 shinyServer(function(input, output) {
     raw.data <- reactiveValues(df_data = NULL)
@@ -23,6 +26,9 @@ shinyServer(function(input, output) {
         rm(temp)
         raw.data$df_data <- TreatNumeric(raw.data$df_data)
         raw.data$df_data <- TreatFactor(raw.data$df_data)
+        for (n in names(facs)){
+              raw.data$df_data[,n] <- fct_collapse(raw.data$df_data[,n], Other = subset(levels(raw.data$df_data[,n]), !(levels(raw.data$df_data[,n]) %in% facs[[n]])))
+        }
     })
 
     output$downloadData <- downloadHandler(
