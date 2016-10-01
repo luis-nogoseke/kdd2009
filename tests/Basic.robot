@@ -9,8 +9,10 @@ Test Teardown     Test Teardown
 
 *** Test Cases ***
 Simple Test
-    # Click Button  id=file1
+    [Documentation]  This test just uploads a test file and downloads produced
+    ...  results.
     Choose File
     ...  id=file1
     ...  file_path=/home/nogoseke/tcc-kdd2009/tcc-data/orange_small_train.data
-    Click Link  id=downloadData
+    Sleep  2
+    Download Results

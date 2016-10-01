@@ -1,9 +1,9 @@
 library(shiny)
-
+library(randomForest)
 source("../lib/prepare.R")
 
 # Load the trained model and the static indo to load the new data
-model <- readRDS("../ada.RD");
+model <- readRDS("../rf.RD");
 classes <- readRDS("../smallclass.RDS")
 attributes <- readRDS("../adaAttributes.RD");
 facs <- readRDS('../adaFacLevels.RD')

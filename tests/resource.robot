@@ -16,3 +16,8 @@ Test Setup
 
 Test Teardown
     Close Browser
+
+
+Download Results
+    ${url}=  Get Element Attribute  downloadData@href
+    Download File  ${url}  results.csv
