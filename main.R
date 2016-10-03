@@ -3,93 +3,62 @@ require(pROC)
 require(ROCR)
 
 source("lib/prepare.R")
+source("lib/myRandomForrest.R")
 last <- function(x) { tail(x, n = 1) }
 # To guarantee reproducible results
-set.seed(1234)
+set.seed(314159265)
+
 
 t <- readRDS('training_data.RDS')
+testing <- readRDS('testing_data.RDS')
+stack.training <- readRDS('stack_training.RDS')
 
-# Remove the target to allow the data preparation
-temp_app <- t$appetency
-t$appetency <- NULL
+# # Train models
 
-# Remove columns that have only the same value
-uniquelength <- sapply(t, function(x) length(unique(x)))
-t <- subset(t, select = uniquelength > 1)
+#library(randomForest)
+#tree <- randomForest(upselling ~ ., data = t, ntree = 50)pedict
 
-# Remove columns with more than 60% missing values
-na.count <-sapply(t, function(x) sum(length(which(is.na(x)))))
-t <- subset(t, select = na.count < 17000)
-
-
-# Treat the missing values and scale the numeric ones
-t <- TreatNumeric(t)
-t <- TreatFactor(t)
-t <- ReduceLevels(t)
-# Remove atributes with correlation higher than 75%
-t <- RemoveHighCorrelated(t)
-
-# re-append the target
-
-t$appetency <-temp_app
-rm(temp_app)
-
+####################################################
 # Train models
-fit.control <- trainControl(method = "repeatedcv", number = 10, repeats = 1,
-                           summaryFunction = twoClassSummary, classProbs = TRUE,
-                           verboseIter = TRUE)
+trainForest(t)
 
-formula <- appetency ~ .
+####################################################
 
-#model <- glm(formula,family=binomial(link='logit'),data=t)
+#prediction <- predict(tree, t, type = "prob")
+#solution <- data.frame(upselling = t$upselling, predicted = prediction)
+#truth_table = table(solution$upselling, solution$predicted)
+#truth_table
 
-# ada <- train(formula, data = t, method = "ada", trControl = fit.control,
-#              metric = "ROC", verbose = TRUE)
-# saveRDS(ada,'ada.RD')
+p <- predict(tree, newdata=t)
+truth_table = confusionMatrix(t$upselling, p)
+truth_table
 
+Vp <- truth_table$table[1,1]
+Fp <- truth_table$table[1,2]
+Fn <- truth_table$table[2,1]
+Vn <- truth_table$table[2,2]
 
-rf <- randomForest(formula, t, importance=TRUE, ntree=300)
-# saveRDS(rf,'rf.RD')
+Sen <- Vp/(Vp+Fp)
+Esp <- Vn/(Vn+Fn)
+AUC <- (Esp+Sen)/2
+AUC
 
-#gbm.fit1 <- train(formula, data = t, method = "gbm", trControl = fit.control,
-#                  metric = "ROC", verbose = TRUE)
+##TESTING
+p2 <- predict(tree, newdata=testing)
+truth_table = confusionMatrix(testing$upselling, p2)
+truth_table
 
+Vp <- truth_table$table[1,1]
+Fp <- truth_table$table[1,2]
+Fn <- truth_table$table[2,1]
+Vn <- truth_table$table[2,2]
 
-#rf.fit <- train(formula, data = t, method = "rf", trControl = fit.control,
-#                metric = "ROC", verbose = TRUE)
-# svm.fit1 <- train(formula, data = t, method = "svmRadial", trControl = fit.control,
-#                   metric = "ROC")
-#
-#
-# nnet1 <- train(formula, data = t, method = "nnet", trControl = fit.control,
-#                metric = "ROC", trace = FALSE)
+Sen <- Vp/(Vp+Fp)
+Esp <- Vn/(Vn+Fn)
+AUC <- (Esp+Sen)/2
+AUC
 
-attributes <- names(t)
-attributes <- attributes[-length(attributes)] # Remove the target
-# saveRDS(attributes, 'adaAttributes.RD')
-testing<-readRDS('testing_data.RDS')[, attributes]
-temp_app <- testing$appetency
-testing$appetency <- NULL
-
-testing <- TreatNumeric(testing)
-testing <- TreatFactor(testing)
-
-
-# Adapt the factors levels on the testing data according to what was selected on
-# the training data
-facs <- sapply(t, is.factor)
-b <- sapply(t[,facs], levels)
-uniquelength <- sapply(b, function(x) length(unique(x)))
-b <- subset(b, uniquelength > 9)
-# saveRDS(b, 'adaFacLevels.RD')
-for (n in names(b)){
-      testing[,n] <- fct_collapse(testing[,n], Other = subset(levels(testing[,n]), !(levels(testing[,n]) %in% b[[n]])))
-}
-
-p <- predict(rf, newdata=testing, "prob")
-plot(performance(prediction(p[,2], temp_app), 'tpr', 'fpr'))
-auc<-performance(prediction(p[,2], temp_app), measure= "auc")
-print(auc@y.values[[1]])
-
-p2 <- predict(rf, newdata=testing)
-confusionMatrix(temp_app, p2)
+prediction <- predict(tree, testing, type = "prob")
+plot(performance(prediction(prediction[,2], testing$upselling), 'tpr', 'fpr'))
+performance(prediction(prediction[,2], testing$upselling), measure= "auc")
+#table(temp_app, p)

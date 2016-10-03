@@ -61,8 +61,8 @@ ReduceLevels <- function(df) {
   #
   # Returns:
   #   The dataframe with factor levels reduced.
-  cols <- (sapply(df, function(x) nlevels(x)) > 10)
-  df[, cols] <- lapply(df[, cols], function(x) fct_lump(x, n = 9))
+  cols <- (sapply(df, function(x) nlevels(x)) > 20)
+  df[, cols] <- lapply(df[, cols], function(x) fct_lump(x, n = 19))
   return (df)
 }
 
@@ -82,7 +82,7 @@ TreatFactor <- function(df) {
   return (df)
 }
 
-RemoveHighCorrelated <- function(df, th = 0.75) {
+RemoveHighCorrelated <- function(df, th = 0.9) {
     # Remove the atributes that have high correlation.
     #
     # Args:
