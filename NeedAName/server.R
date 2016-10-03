@@ -12,6 +12,7 @@ print('Ready')
 
 shinyServer(function(input, output) {
     raw.data <- reactiveValues(df_data = NULL)
+    results <- reactiveValues(res = NULL)
 
     # To allow the upload of files up to 30 MB
     options(shiny.maxRequestSize=30*1024^2)
@@ -36,17 +37,20 @@ shinyServer(function(input, output) {
             paste('Results-', Sys.Date(), '.csv', sep='')
         },
         content = function(file) {
-            results <- predict(model, newdata = raw.data$df_data)
-            write.csv(results, file)
+            results$res <- predict(model, newdata = raw.data$df_data)
+            output$plot <- renderPlot({
+                plot(cars$speed, cars$dist)
+            })
+            write.csv(results$res, file)
       },
       contentType = "text/csv"
     )
 
     observe({
-        if (input$plotButton == 0) return ()
+        if (input$plotButton == 0 || is.null(results$res)) return ()
         isolate({
           output$plot <- renderPlot({
-            plot(cars$speed, cars$dist)
+            barplot(table(results$res))
           })
         })
     })
