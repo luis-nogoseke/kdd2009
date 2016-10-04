@@ -17,7 +17,12 @@ Test Setup
 Test Teardown
     Close Browser
 
-
 Download Results
+    [Arguments]  ${filename}
     ${url}=  Get Element Attribute  downloadData@href
-    Download File  ${url}  results.csv
+    Download File  ${url}  ${filename}
+
+Compare files
+    [Arguments]  ${file1}  ${file2}
+    ${diff}=  Run and Return RC  diff ${file1} ${file2}
+    Should be Equal  ${diff}  ${0}

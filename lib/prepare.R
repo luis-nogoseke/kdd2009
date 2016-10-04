@@ -1,4 +1,5 @@
 require(forcats)
+require(caret)
 
 Mode <- function(x) {
   # Find the mode.
@@ -62,7 +63,11 @@ ReduceLevels <- function(df) {
   # Returns:
   #   The dataframe with factor levels reduced.
   cols <- (sapply(df, function(x) nlevels(x)) > 10)
-  df[, cols] <- lapply(df[, cols], function(x) fct_lump(x, n = 9))
+  if(sum(cols) == 1){
+      df[, cols] <- fct_lump(df[, cols], n = 8)
+      return (df)
+  }
+  df[, cols] <- lapply(df[, cols], function(x) fct_lump(x, n = 8))
   return (df)
 }
 
@@ -83,7 +88,7 @@ TreatFactor <- function(df) {
 }
 
 RemoveHighCorrelated <- function(df, th = 0.75) {
-    # Remove the atributes that have high correlation.
+    # Remove the attributes that have high correlation.
     #
     # Args:
     #    df: dataframe to be analyzed.
@@ -96,4 +101,22 @@ RemoveHighCorrelated <- function(df, th = 0.75) {
     corr <- cor(df[, numerics])
     alta.corr <- findCorrelation(corr, cutoff = th)
     subset(df, select = -alta.corr)
+}
+
+RemoveHighMissing <- function(df, p = 0.6) {
+    # Remove the attributes that have more than 60% of values missing
+    #
+    # Args:
+    #    df: dataframe to be analyzed.
+    #    p: threshold of the percentage of missing values.
+    #
+    # Returns:
+    #   The dataframe with the selected columns removed.
+    uniquelength <- sapply(df, function(x) length(unique(x)))
+    df <- subset(df, select = uniquelength > 1)
+
+    # Remove columns with more than 60% missing values
+    na.count <-sapply(df, function(x) sum(length(which(is.na(x)))))
+    df <- subset(df, select = na.count < (nrow(df) * p))
+    return (df)
 }

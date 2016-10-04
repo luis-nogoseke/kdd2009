@@ -13,7 +13,7 @@ target <- read.table("tcc-data/orange_small_train_appetency.labels",
                      header = FALSE)
 names(target) <- c("appetency")
 target$appetency <- as.factor(target$appetency)
-target <- fct_recode(target$appetency, A = "-1", B = "1")
+target <- fct_recode(target$appetency, "0" = "-1")
 t$appetency <- target
 
 # Split the data

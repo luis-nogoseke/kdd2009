@@ -50,7 +50,7 @@ shinyServer(function(input, output) {
         if (input$plotButton == 0 || is.null(results$res)) return ()
         isolate({
           output$plot <- renderPlot({
-            barplot(table(results$res))
+            barplot(table(results$res), main='Results', names.arg=c('1', '0'))
           })
         })
     })

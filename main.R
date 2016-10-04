@@ -1,6 +1,7 @@
 require(caret)
 require(pROC)
 require(ROCR)
+require(randomForest)
 
 source("lib/prepare.R")
 last <- function(x) { tail(x, n = 1) }
@@ -65,9 +66,9 @@ rf <- randomForest(formula, t, importance=TRUE, ntree=300)
 #                metric = "ROC", trace = FALSE)
 
 attributes <- names(t)
+testing<-readRDS('testing_data.RDS')[, attributes]
 attributes <- attributes[-length(attributes)] # Remove the target
 # saveRDS(attributes, 'adaAttributes.RD')
-testing<-readRDS('testing_data.RDS')[, attributes]
 temp_app <- testing$appetency
 testing$appetency <- NULL
 
