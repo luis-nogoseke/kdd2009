@@ -17,7 +17,9 @@ shinyUI(fluidPage(
     ),
 
     mainPanel(
-      plotOutput("plot")
+      plotOutput("plot_a"),
+      plotOutput("plot_u"),
+      plotOutput("plot_c")
     )
   )
 ))
