@@ -81,7 +81,7 @@ testing <- TreatFactor(testing)
 facs <- sapply(t, is.factor)
 b <- sapply(t[,facs], levels)
 uniquelength <- sapply(b, function(x) length(unique(x)))
-b <- subset(b, uniquelength > 9)
+b <- subset(b, uniquelength > 8)
 # saveRDS(b, 'adaFacLevels.RD')
 for (n in names(b)){
       testing[,n] <- fct_collapse(testing[,n], Other = subset(levels(testing[,n]), !(levels(testing[,n]) %in% b[[n]])))
