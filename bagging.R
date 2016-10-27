@@ -1,6 +1,7 @@
 require(rpart)
 require(foreach)
 require(doMC)
+require(nnet)
 
 set.seed(1234)
 registerDoMC(4)
@@ -21,7 +22,7 @@ GetAUC <- function(real, predicted) {
     return (AUC)
 }
 
-formula <- appetency ~ .
+formula <- churn ~ .
 
 base.tree <- rpart(formula, data=train, method='class', control=rpart.control(minsplit=2, minbucket=1, cp=0.001))
 
@@ -29,7 +30,7 @@ pred <- predict(base.tree, newdata=test, 'class')
 
 
 # 0.5243514
-base.AUC <- GetAUC(test$appetency, pred)
+base.AUC <- GetAUC(test$churn, pred)
 #####################################################
 
 bagging <- function(formula, training, length_divisor=3, iterations=10) {
@@ -57,7 +58,7 @@ p1 <- MakePredictions(m, test)
 
 
 aucs <- foreach(a=iter(p1), .combine=c) %dopar% {
-    GetAUC(test$appetency, a)
+    GetAUC(test$churn, a)
 }
 # [1] 0.5084557 0.5196232 0.5188126 0.5469922 0.5081906 0.5308069 0.5349041
 # [8] 0.5308722 0.5271984 0.5144141
@@ -84,3 +85,6 @@ Veto <- function(x) {
 p.veto <- as.factor(apply(p1, 1, Veto))
 GetAUC(test$appetency, p.veto)
 # 0.6318631
+
+
+st <- nnet(x = p1, y = class.ind(test$churn), size = 1, softmax=TRUE)

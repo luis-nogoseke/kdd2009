@@ -12,7 +12,11 @@ t <- readRDS('training_data.RDS')
 
 # Remove the target to allow the data preparation
 temp_app <- t$appetency
+temp_ch <- t$churn
+temp_up <- t$upselling
 t$appetency <- NULL
+t$churn <- NULL
+t$upselling <- NULL
 
 # Remove columns that have only the same value
 uniquelength <- sapply(t, function(x) length(unique(x)))
@@ -33,7 +37,12 @@ t <- RemoveHighCorrelated(t)
 # re-append the target
 
 t$appetency <-temp_app
+t$churn <-temp_ch
+t$upselling <-temp_up
+
 rm(temp_app)
+rm(temp_ch)
+rm(temp_up)
 
 # Train models
 fit.control <- trainControl(method = "repeatedcv", number = 10, repeats = 1,
@@ -70,7 +79,11 @@ testing<-readRDS('testing_data.RDS')[, attributes]
 attributes <- attributes[-length(attributes)] # Remove the target
 # saveRDS(attributes, 'adaAttributes.RD')
 temp_app <- testing$appetency
+temp_ch <- testing$churn
+temp_up <- testing$upselling
 testing$appetency <- NULL
+testing$churn <- NULL
+testing$upselling <- NULL
 
 testing <- TreatNumeric(testing)
 testing <- TreatFactor(testing)
@@ -86,6 +99,10 @@ b <- subset(b, uniquelength > 8)
 for (n in names(b)){
       testing[,n] <- fct_collapse(testing[,n], Other = subset(levels(testing[,n]), !(levels(testing[,n]) %in% b[[n]])))
 }
+
+# testing$appetency <-temp_app
+# testing$churn <-temp_ch
+# testing$upselling <-temp_up
 
 p <- predict(rf, newdata=testing, "prob")
 plot(performance(prediction(p[,2], temp_app), 'tpr', 'fpr'))

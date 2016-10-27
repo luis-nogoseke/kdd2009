@@ -10,11 +10,24 @@ t <- read.table("tcc-data/orange_small_train.data", nrow = 50000,
 
 
 target <- read.table("tcc-data/orange_small_train_appetency.labels",
-                     header = FALSE)
-names(target) <- c("appetency")
+                       header = FALSE)
+target <- cbind(target, read.table("tcc-data/orange_small_train_churn.labels",
+                       header = FALSE))
+target <- cbind(target, read.table("tcc-data/orange_small_train_upselling.labels",
+                        header = FALSE))
+
+names(target) <- c("appetency", "churn", "upselling")
 target$appetency <- as.factor(target$appetency)
-target <- fct_recode(target$appetency, "0" = "-1")
-t$appetency <- target
+target$churn <- as.factor(target$churn)
+target$upselling <- as.factor(target$upselling)
+
+target$appetency <- fct_recode(target$appetency, "0" = "-1")
+target$churn <- fct_recode(target$churn, "0" = "-1")
+target$upselling <- fct_recode(target$upselling, "0" = "-1")
+
+t$appetency <- target$appetency
+t$churn <- target$churn
+t$upselling <- target$upselling
 
 # Split the data
 in.training <- createDataPartition(t$appetency, p = .75, list = FALSE)
