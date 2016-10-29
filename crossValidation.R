@@ -1,12 +1,11 @@
 require(rpart)
 require(foreach)
 require(doMC)
-require(nnet)
+require(caret)
 
 set.seed(1234)
 registerDoMC(4)
-train <- readRDS('prepdata/train.RD')
-test <- readRDS('prepdata/test.RD')
+train <- readRDS('prepdata/full.RD')
 
 
 GetAUC <- function(real, predicted) {
@@ -22,15 +21,26 @@ GetAUC <- function(real, predicted) {
     return (AUC)
 }
 
-formula <- churn ~ .
+formula <- appetency ~ .
 
 base.tree <- rpart(formula, data=train, method='class', control=rpart.control(minsplit=2, minbucket=1, cp=0.001))
+pred <- predict(base.tree, newdata=train, 'class')
+# 0.6730235
+base.AUC <- GetAUC(test$appetency, pred)
 
-pred <- predict(base.tree, newdata=test, 'class')
+#####################################################
 
+flds <- createFolds(train$appetency, k = 10, list = TRUE, returnTrain = FALSE)
 
-# 0.5243514
-base.AUC <- GetAUC(test$churn, pred)
+results <- foreach(f=iter(flds), .combine=c, .packages='rpart') %dopar% {
+    model <- rpart(formula, data=train[-f,], method='class', control=rpart.control(minsplit=2, minbucket=1, cp=0.001))
+    pred <- predict(model, newdata=train[f,], 'class')
+    GetAUC(train$appetency[f], pred)
+}
+
+# 0.5362918
+mean(results)
+
 #####################################################
 
 bagging <- function(formula, training, length_divisor=3, iterations=10) {
@@ -46,22 +56,19 @@ bagging <- function(formula, training, length_divisor=3, iterations=10) {
 
 m <- bagging(formula, train)
 
-MakePredictions <- function(model, newdata) {
-    predictions <- foreach(a=iter(model), .combine=cbind.data.frame, .packages='rpart') %dopar% {
+MakePredictions <- function(models, newdata) {
+    predictions <- foreach(a=iter(models), .combine=cbind.data.frame, .packages='rpart') %dopar% {
         p = predict(a, newdata, 'class');
         p
     }
     return (predictions)
 }
 
-p1 <- MakePredictions(m, test)
-
+p1 <- MakePredictions(m, train)
 
 aucs <- foreach(a=iter(p1), .combine=c) %dopar% {
-    GetAUC(test$churn, a)
+    GetAUC(train$appetency, a)
 }
-# [1] 0.5084557 0.5196232 0.5188126 0.5469922 0.5081906 0.5308069 0.5349041
-# [8] 0.5308722 0.5271984 0.5144141
 
 Majority <- function(x) {
     tabulatedOutcomes <- table(x)
@@ -71,8 +78,8 @@ Majority <- function(x) {
 }
 
 p.majority <- as.factor(apply(p1, 1, Majority))
-GetAUC(test$appetency, p.majority)
-# 0.5043416
+GetAUC(train$appetency, p.majority)
+# 0.5825537
 
 Veto <- function(x) {
     ux <- unique(x)
@@ -84,7 +91,25 @@ Veto <- function(x) {
 
 p.veto <- as.factor(apply(p1, 1, Veto))
 GetAUC(test$appetency, p.veto)
-# 0.6318631
+# 0.9453529
+
+#####################################################
 
 
-st <- nnet(x = p1, y = class.ind(test$churn), size = 1, softmax=TRUE)
+flds <- createFolds(train$appetency, k = 10, list = TRUE, returnTrain = FALSE)
+
+results <- foreach(f=iter(flds), .combine=c, .packages='rpart') %dopar% {
+    models <- bagging(formula, train[-f,], iterations=25)
+    pred <- MakePredictions(models, train[f,])
+    # p.final <- as.factor(apply(pred, 1, Majority))
+    p.final <- as.factor(apply(pred, 1, Veto))
+    GetAUC(train$appetency[f], p.final)
+}
+
+# Bagging of 10 models
+# Majority: 0.5091942  Veto: 0.6587649 
+# Bagging of 50 models
+# Veto: 0.6806732
+# Bagging of 100 models
+# Veto: 0.6889602
+mean(results)
