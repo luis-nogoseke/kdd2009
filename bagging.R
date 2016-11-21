@@ -85,6 +85,3 @@ Veto <- function(x) {
 p.veto <- as.factor(apply(p1, 1, Veto))
 GetAUC(test$appetency, p.veto)
 # 0.6318631
-
-
-st <- nnet(x = p1, y = class.ind(test$churn), size = 1, softmax=TRUE)
