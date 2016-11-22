@@ -1,14 +1,33 @@
 require(xgboost)
 require(doMC)
 require(pROC)
+require(caret)
 
 set.seed(1234)
 registerDoMC(5)
 
-set.seed(1234)
 
-train <- readRDS('prepdata/train.RD')
-test <- readRDS('prepdata/test.RD')
+full <- readRDS('prepdata/full.RD')
+
+
+labels <- subset(full, select = appetency:upselling)
+n <- ncol(full)-3
+full <- full[,1:n]
+
+
+full$churn <- labels$churn
+
+in.training <- createDataPartition(full$churn, p = .75, list = FALSE)
+train.stack <-  full[-in.training, ]
+train <- full[ in.training, ]
+
+in.training <- createDataPartition(train$churn, p = .75, list = FALSE)
+test <- train[-in.training, ]
+train <- train[ in.training, ]
+
+#in.training <- createDataPartition(full$churn, p = .75, list = FALSE)
+#test <- full[-in.training, ]
+#train <- full[ in.training, ]
 
 
 GetAUC <- function(real, predicted) {
@@ -24,64 +43,58 @@ GetAUC <- function(real, predicted) {
     return (AUC)
 }
 
-dtrain <- xgb.DMatrix(data = data.matrix(train[,1:66]), label = data.matrix(train[,67]))
-bstDMatrix <- xgboost(data = dtrain, max.depth = 15, eta = 0.1, nthread = 5, nround = 25, objective = "binary:logistic", eval_metric= 'auc')
-pred <- predict(bstDMatrix, data.matrix(test[, 1:66]))
+
+dtrain <- xgb.DMatrix(data = data.matrix(train[,1:58]), label = data.matrix(train[,59]))
+bstDMatrix <- xgboost(data = dtrain,
+                     # nfold=10,
+                      max.depth = 10,
+                      eta = 0.05,
+                      subsample=0.5,
+                      max_delta_step=1,
+                      scale_pos_weight=0.5,
+                      min_child_weight = 1,
+                      colsample_bytree=0.5,
+                      nround = 150,
+                      objective = "binary:logistic",
+                      eval_metric= 'auc',
+                      nthread=5)
+pred <- predict(bstDMatrix, data.matrix(test[, 1:58]))
 
 
-rocCurve   <- roc(response = test$appetency,
+rocCurve   <- roc(response = test$churn,
                       predictor = pred,
-                      levels = rev(levels(test$appetency)))
-plot(rocCurve, print.thres = "best")
+                      levels = rev(levels(test$churn)))
+# plot(rocCurve, print.thres = "best")
+rocCurve
+th <- coords(rocCurve, 'best', ret='threshold')
 
 pred.t <- pred
-pred.t[pred <= 0.079 ] <- 1
-pred.t[pred > 0.079 ] <- 2
+pred.t[pred <= th ] <- 1
+pred.t[pred > th ] <- 2
 pred.t <- as.factor(pred.t)
 levels(pred.t) <- c("No", "Yes")
-GetAUC(test$appetency, pred.t)
-
-
-xgb <- xgboost(data = data.matrix(t3), 
- label = data.matrix(lab[,1]), 
- eta = 0.1,
- max_depth = 15, 
- nround=25,
- subsample = 0.5,
- colsample_bytree = 0.5,
- eval_metric = "merror",
- objective = "binary:logistic",
- num_class = 12,
- nthread = 3
-)
+GetAUC(test$churn, pred.t)
 
 
 
-labels <- subset(test, select = appetency)
-n <- ncol(test)-1
-test.xg <- test[,1:n]
-
-factors <- sapply(test.xg, is.factor)
-t2 <- data.frame(lapply(test.xg[, factors], function(x) model.matrix(~x-1,test.xg)))
-t3 <- cbind(test[, !factors], t2)
-
-p <- predict(xgb, newdata=data.matrix(t3))
-
-
-
-
-
-# We need to seprate the data from the labels 
-labels <- subset(train, select = appetency)
-n <- ncol(train)-1
-train.xg <- train[,1:n]
-
-
-levels(labels$appetency) <- c("No", "Yes")
-levels(test$appetency) <- c("No", "Yes")
-
-factors <- sapply(train.xg, is.factor)
-t2 <- data.frame(lapply(train.xg[, factors], function(x) model.matrix(~x-1,train.xg)))
-t3 <- cbind(train[, !factors], t2)
-
-lab <- model.matrix(~appetency-1,labels)
+# model_xg <- train(data.matrix(train[,1:58]), data.matrix(l), method='xgbTree', metric='ROC', trControl=fit.control)
+##############################################
+# appetency
+# bstDMatrix <- xgboost(data = dtrain, max.depth = 10, eta = 0.02, nthread = 5, nround = 80, objective = "binary:logistic", eval_metric= 'auc', nthread=5)
+# 0.01223349   0.7411009
+#      No  Yes
+#  0 7197 2011
+#  1   50  117
+#
+# upselling
+# 0.07776084  0.762449
+#      No  Yes
+#  0 7176 1508
+#  1  208  482
+#
+# churn
+# 0.0478997 0.6625029
+#
+#      No  Yes
+#  0 6762 1924
+#  1  312  376

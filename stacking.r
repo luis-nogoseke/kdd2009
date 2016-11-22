@@ -5,7 +5,7 @@ require(nnet)
 require(caret)
 require(ROCR)
 require(pROC)
-
+require(xgboost)
 set.seed(1234)
 registerDoMC(5)
 
@@ -116,10 +116,16 @@ model_rpart <- train(train[,1:58], train[,59], method='rpart', metric='ROC', trC
 model_treebag <- train(train[,1:58], train[,59], method='treebag', metric='ROC', trControl=fit.control)
 model_nnet <- train(train[,1:58], train[,59], method='nnet', metric='ROC', trControl=fit.control)
 
-model_xg <- train(train[,1:58], train[,59], method='xgbTree', metric='ROC', trControl=fit.control)
+
 
 #Var126
 #Var218  parecem importantes
+
+
+
+
+
+
 
 gbmImp <- varImp(model_gbm, scale = FALSE)
 
@@ -138,6 +144,24 @@ test.stack$appetency <- test$appetency
 
 predictors <- names(preds.stack)[names(preds.stack) != 'appetency']
 final_blender_model <- train(preds.stack[, predictors], preds.stack[, 'appetency'], method='nnet', metric='ROC', trControl=fit.control)
+
+
+
+
+label <- as.numeric(preds.stack[, 'appetency'])-1
+dtrain <- xgb.DMatrix(data = data.matrix(preds.stack[,predictors]), label = data.matrix(label))
+bstDMatrix <- xgboost(data = dtrain, max.depth = 15, eta = 0.1, nthread = 5, nround = 80, objective = "binary:logistic", eval_metric= 'auc', nthread=5)
+
+pred <- predict(bstDMatrix, data.matrix(test[, 1:58]))
+
+
+rocCurve   <- roc(response = test$appetency,
+                      predictor = pred,
+                      levels = rev(levels(test$appetency)))
+plot(rocCurve, print.thres = "best")
+
+
+
 
 # train.stack$gbm_PROB <- predict(object=model_gbm, train.stack[,predictors])
 # train.stack$rf_PROB <- predict(object=model_rpart, train.stack[,predictors])
