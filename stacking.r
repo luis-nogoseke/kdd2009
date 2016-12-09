@@ -120,14 +120,9 @@ model_nnet <- train(train[,1:58], train[,59], method='nnet', metric='ROC', trCon
 
 #Var126
 #Var218  parecem importantes
-
-
-
-
-
-
-
 gbmImp <- varImp(model_gbm, scale = FALSE)
+
+
 
 preds.stack <- as.data.frame(as.data.frame(predict(object=model_gbm, train.stack[,1:58], 'prob'))$Yes)
 names(preds.stack) <- 'gbm_PROB'
@@ -148,17 +143,17 @@ final_blender_model <- train(preds.stack[, predictors], preds.stack[, 'appetency
 
 
 
-label <- as.numeric(preds.stack[, 'appetency'])-1
-dtrain <- xgb.DMatrix(data = data.matrix(preds.stack[,predictors]), label = data.matrix(label))
-bstDMatrix <- xgboost(data = dtrain, max.depth = 15, eta = 0.1, nthread = 5, nround = 80, objective = "binary:logistic", eval_metric= 'auc', nthread=5)
+# label <- as.numeric(preds.stack[, 'appetency'])-1
+# dtrain <- xgb.DMatrix(data = data.matrix(preds.stack[,predictors]), label = data.matrix(label))
+# bstDMatrix <- xgboost(data = dtrain, max.depth = 15, eta = 0.1, nthread = 5, nround = 80, objective = "binary:logistic", eval_metric= 'auc', nthread=5)
 
-pred <- predict(bstDMatrix, data.matrix(test[, 1:58]))
+# pred <- predict(bstDMatrix, data.matrix(test[, 1:58]))
 
 
-rocCurve   <- roc(response = test$appetency,
-                      predictor = pred,
-                      levels = rev(levels(test$appetency)))
-plot(rocCurve, print.thres = "best")
+# rocCurve   <- roc(response = test$appetency,
+#                       predictor = pred,
+#                       levels = rev(levels(test$appetency)))
+# plot(rocCurve, print.thres = "best")
 
 
 
@@ -175,25 +170,28 @@ plot(rocCurve, print.thres = "best")
 
 
 
-preds <- predict(object=final_blender_model, test.stack[,predictors])
-GetAUC(test$appetency, preds)
+# preds <- predict(object=final_blender_model, test.stack[,predictors])
+# GetAUC(test$appetency, preds)
 
 
-preds <- predict(object=final_blender_model, test.stack[,predictors], 'prob')
-rocCurve   <- roc(response = test$appetency,
+preds <- predict(object=final_blender_model, preds.stack[,predictors], 'prob')
+rocCurve   <- roc(response = preds.stack$appetency,
                       predictor = preds[, "Yes"],
-                      levels = rev(levels(test$appetency)))
-plot(rocCurve, print.thres = "best")
+                      levels = rev(levels(preds.stack$appetency)))
+
+th <- coords(rocCurve, 'best', ret='threshold')
+# plot(rocCurve, print.thres = "best")
 
 
 preds <- predict(object=final_blender_model, test.stack[,predictors], 'prob')
 plot(preds$Yes, test$appetency)
 pred.t <- preds$Yes
-pred.t[preds$Yes <= 0.015 ] <- 1
-pred.t[preds$Yes > 0.015 ] <- 2
+pred.t[preds$Yes <= th ] <- 1
+pred.t[preds$Yes > th ] <- 2
 pred.t <- as.factor(pred.t)
 levels(pred.t) <- c("No", "Yes")
 GetAUC(test$appetency, pred.t)
+
 # appetency 0.016
 # [1] 0.7243613
 # 
@@ -219,6 +217,3 @@ GetAUC(test$appetency, pred.t)
 #        No  Yes
 #  No  7556 1128
 #  Yes  258  432
-
-
-

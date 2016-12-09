@@ -1,11 +1,14 @@
 library(shiny)
 library(randomForest)
+library(xgboost)
 source("../lib/prepare.R")
 source("../lib/TCC_RandomForest.R")
 
 # Load the trained model and the static indo to load the new data
-model_a <- readRDS("../SForest_Appetency20.RDS")
-model_u <- readRDS("../SForest_Upselling20.RDS")
+# model_a <- readRDS("../SForest_Appetency20.RDS")
+model_a <- readRDS("../lib/xg_appetency.RD")
+#model_u <- readRDS("../SForest_Upselling20.RDS")
+model_u <- readRDS("../lib/xg_upselling.RD")
 model_c <- readRDS("../SForest_Churn20.RDS")
 
 
@@ -44,8 +47,18 @@ shinyServer(function(input, output) {
             paste('Results-', Sys.Date(), '.csv', sep='')
         },
         content = function(file) {
-            results$appetency <- predictForest(model_a, raw.data$df_data, length(model_a))
-            results$upselling <- predictForest(model_u, raw.data$df_data, length(model_u))
+            pred <- predict(model_a, data.matrix(raw.data$df_data))
+            pred.t <- pred
+            pred.t[pred <= 0.01223349 ] <- 1
+            pred.t[pred > 0.01223349 ] <- 2
+            pred.t <- as.factor(pred.t)
+            results$appetency <- pred.t
+            pred <- predict(model_u, data.matrix(raw.data$df_data))
+            pred.t <- pred
+            pred.t[pred <= 0.040774 ] <- 1
+            pred.t[pred > 0.040774 ] <- 2
+            pred.t <- as.factor(pred.t)
+            results$upselling <- pred.t
             results$churn <- predictForest(model_c, raw.data$df_data, length(model_c))
             df <- data.frame(results$appetency, results$upselling, results$churn)
             write.csv(df, file)

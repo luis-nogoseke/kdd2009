@@ -15,17 +15,17 @@ n <- ncol(full)-3
 full <- full[,1:n]
 
 
-full$churn <- labels$churn
+full$upselling <- labels$upselling
 
-in.training <- createDataPartition(full$churn, p = .75, list = FALSE)
+in.training <- createDataPartition(full$upselling, p = .75, list = FALSE)
 train.stack <-  full[-in.training, ]
 train <- full[ in.training, ]
 
-in.training <- createDataPartition(train$churn, p = .75, list = FALSE)
+in.training <- createDataPartition(train$upselling, p = .75, list = FALSE)
 test <- train[-in.training, ]
 train <- train[ in.training, ]
 
-#in.training <- createDataPartition(full$churn, p = .75, list = FALSE)
+#in.training <- createDataPartition(full$upselling, p = .75, list = FALSE)
 #test <- full[-in.training, ]
 #train <- full[ in.training, ]
 
@@ -46,34 +46,36 @@ GetAUC <- function(real, predicted) {
 
 dtrain <- xgb.DMatrix(data = data.matrix(train[,1:58]), label = data.matrix(train[,59]))
 bstDMatrix <- xgboost(data = dtrain,
-                     # nfold=10,
-                      max.depth = 10,
-                      eta = 0.05,
-                      subsample=0.5,
-                      max_delta_step=1,
-                      scale_pos_weight=0.5,
-                      min_child_weight = 1,
-                      colsample_bytree=0.5,
-                      nround = 150,
-                      objective = "binary:logistic",
-                      eval_metric= 'auc',
-                      nthread=5)
-pred <- predict(bstDMatrix, data.matrix(test[, 1:58]))
+                    # nfold=10,
+                    max.depth = 10,
+                    eta = 0.05,
+                    subsample=0.5,
+                    max_delta_step=1,
+                    scale_pos_weight=0.5,
+                    min_child_weight = 1,
+                    colsample_bytree=0.5,
+                    nround = 150,
+                    objective = "binary:logistic",
+                    eval_metric= 'auc',
+                    nthread=5)
+pred <- predict(bstDMatrix, data.matrix(train.stack[, 1:58]))
 
 
-rocCurve   <- roc(response = test$churn,
+rocCurve   <- roc(response = train.stack$upselling,
                       predictor = pred,
-                      levels = rev(levels(test$churn)))
+                      levels = rev(levels(train.stack$upselling)))
 # plot(rocCurve, print.thres = "best")
 rocCurve
 th <- coords(rocCurve, 'best', ret='threshold')
 
+
+pred <- predict(bstDMatrix, data.matrix(test[, 1:58]))
 pred.t <- pred
 pred.t[pred <= th ] <- 1
 pred.t[pred > th ] <- 2
 pred.t <- as.factor(pred.t)
 levels(pred.t) <- c("No", "Yes")
-GetAUC(test$churn, pred.t)
+GetAUC(test$upselling, pred.t)
 
 
 
